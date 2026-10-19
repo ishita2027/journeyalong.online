@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import type { AppState, Reminders } from "@/lib/types";
 import { PLANS } from "@/lib/brand";
+import AuthPanel, { type SyncStatus } from "./AuthPanel";
 
 export default function ProfileView({
   state,
@@ -14,6 +15,9 @@ export default function ProfileView({
   onExport,
   onImport,
   onReset,
+  email,
+  sync,
+  onSignOut,
 }: {
   state: AppState;
   aiOn: boolean;
@@ -25,6 +29,9 @@ export default function ProfileView({
   onExport: () => void;
   onImport: (file: File) => void;
   onReset: () => void;
+  email: string | null;
+  sync: SyncStatus;
+  onSignOut: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -49,6 +56,10 @@ export default function ProfileView({
           </label>
           <input id="name" className="input" value={state.name} maxLength={40} onChange={(e) => onName(e.target.value)} />
         </div>
+      </section>
+
+      <section className="card card-lg" aria-label="Account">
+        <AuthPanel email={email} status={sync} onSignOut={onSignOut} />
       </section>
 
       <section className="note note-peach" style={{ display: "grid", gap: 10 }} aria-label="Your plan">

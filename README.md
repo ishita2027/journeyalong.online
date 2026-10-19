@@ -19,7 +19,7 @@ Three promises a day. Self-trust, not streaks.
 A fully missed day never shows a count like "0 of 3" on Today. There is no red or green anywhere.
 On Android phones a kept promise gives a short vibration; there is no sound.
 
-Next.js (App Router) + TypeScript. No database and no extra runtime dependencies.
+Next.js (App Router) + TypeScript. Optional accounts and sync with Supabase (email sign-in link).
 
 ## Deploy to Vercel
 
@@ -79,7 +79,6 @@ days, for a Mirror) is sent to the Anthropic API.
 - **Reminders.** The times are saved in Profile, but no notifications are sent yet. Web push works on Android,
   and on iPhone only after the app is added to the home screen.
 - **Accounts and sync.** Data lives in one browser. Add auth and a database (for example Supabase) before
-- 
   charging money.
 - **Per-user AI limits.** `/api/ai` has payload caps and a best-effort per-IP limiter only.
 - The crisis-language handling in the partner prompt (it points to Tele-MANAS, 14416) should be reviewed

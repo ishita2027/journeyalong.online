@@ -2,9 +2,27 @@
 import { useState } from "react";
 import { Circle } from "./Circle";
 import { Sparkle, Wordmark } from "./Icons";
+import AuthPanel from "./AuthPanel";
 
-export default function Onboarding({ onStart, onDemo }: { onStart: (name: string) => void; onDemo: (name: string) => void }) {
+export default function Onboarding({
+  onStart,
+  onDemo,
+  signingIn = false,
+}: {
+  onStart: (name: string) => void;
+  onDemo: (name: string) => void;
+  signingIn?: boolean;
+}) {
   const [name, setName] = useState("");
+  const [showSignIn, setShowSignIn] = useState(false);
+  if (signingIn) {
+    return (
+      <main className="welcome">
+        <Wordmark />
+        <p className="lede" role="status">Opening your journal…</p>
+      </main>
+    );
+  }
   return (
     <main className="welcome" data-clarity-mask="True">
       <Wordmark />
@@ -45,7 +63,22 @@ export default function Onboarding({ onStart, onDemo }: { onStart: (name: string
           </button>
         </div>
       </div>
-      <p className="hint">Your entries stay in this browser. Only the text of a check-in you finish is sent to the AI coach.</p>
+      <div className="card" style={{ display: "grid", gap: 10 }}>
+        {showSignIn ? (
+          <>
+            <p className="headline">Welcome back</p>
+            <AuthPanel email={null} status="off" compact />
+          </>
+        ) : (
+          <div className="row-split">
+            <p className="soft body-sm">Already have an account?</p>
+            <button className="btn btn-quiet" onClick={() => setShowSignIn(true)}>
+              Sign in
+            </button>
+          </div>
+        )}
+      </div>
+      <p className="hint">You can use Journey Along without an account. Sign in from Profile any time to save your journal and use it on other devices.</p>
     </main>
   );
 }

@@ -6,6 +6,9 @@ import { addDays, dayKeyAt, phaseAt, type Phase } from "@/lib/dates";
 import { emptyState, loadState, saveState, validateImport } from "@/lib/storage";
 import { checkAiEnabled } from "@/lib/client";
 import { makeDemoEntries } from "@/lib/demo";
+import { supabase } from "@/lib/supabase";
+import { deleteAllRemote, merge, pullAll, pushEntries, pushMirrors, pushProfile, removeEntries } from "@/lib/sync";
+import type { SyncStatus } from "./AuthPanel";
 import { Circle } from "./Circle";
 import { TabIcon, Wordmark, type TabId } from "./Icons";
 import Onboarding from "./Onboarding";
@@ -43,6 +46,16 @@ export default function AppShell() {
   const [toast, setToast] = useState("");
   const [upgrade, setUpgrade] = useState(false);
   const loaded = useRef(false);
+  const [user, setUser] = useState<{ id: string; email: string } | null>(null);
+  const [sync, setSync] = useState<SyncStatus>("off");
+  const pulledFor = useRef<string | null>(null);
+  const baseline = useRef<{ entries: Map<string, string>; mirrors: Map<string, string>; profile: string }>({
+    entries: new Map(),
+    mirrors: new Map(),
+    profile: "",
+  });
+  const stateRef = useRef<AppState | null>(null);
+  stateRef.current = state;
 
   useEffect(() => {
     setState(loadState());
@@ -74,20 +87,104 @@ export default function AppShell() {
     window.scrollTo?.({ top: 0 });
   }, [tab]);
 
+  // ---- Accounts: listen for sign in / sign out ----
+  useEffect(() => {
+    const sb = supabase();
+    if (!sb) return;
+    const toUser = (u: { id: string; email?: string } | null | undefined) => (u ? { id: u.id, email: u.email ?? "" } : null);
+    sb.auth.getSession().then(({ data }) => setUser(toUser(data.session?.user)));
+    const { data } = sb.auth.onAuthStateChange((_event, session) => setUser(toUser(session?.user)));
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  const snapshot = (s: AppState) => {
+    const entries = new Map<string, string>();
+    for (const [d, e] of Object.entries(s.entries)) if (!e.demo) entries.set(d, JSON.stringify(e));
+    const mirrors = new Map<string, string>();
+    for (const [d, m] of Object.entries(s.mirrors)) mirrors.set(d, JSON.stringify(m));
+    return { entries, mirrors, profile: JSON.stringify([s.name, s.reminders]) };
+  };
+
+  // ---- Accounts: first load after sign in pulls the account and merges this device's entries into it ----
+  useEffect(() => {
+    if (!user) {
+      pulledFor.current = null;
+      setSync("off");
+      return;
+    }
+    if (!stateRef.current || pulledFor.current === user.id) return;
+    pulledFor.current = user.id;
+    setSync("syncing");
+    pullAll(user.id)
+      .then((remote) => {
+        const local = stateRef.current!;
+        const merged = merge(local, remote);
+        // Baseline = what the server has, so anything newer on this device gets uploaded next.
+        baseline.current = snapshot({ ...merged, entries: remote.entries, mirrors: remote.mirrors, name: remote.name ?? "", reminders: remote.reminders ?? merged.reminders });
+        setState(merged);
+        setSync("saved");
+      })
+      .catch(() => {
+        pulledFor.current = null;
+        setSync("error");
+        setToast("Couldn't reach your account. Your entries are safe on this device.");
+      });
+  }, [user, state === null]);
+
+  // ---- Accounts: save changes to the account a moment after they happen ----
+  useEffect(() => {
+    if (!user || !state || pulledFor.current !== user.id) return;
+    const t = setTimeout(async () => {
+      const cur = snapshot(state);
+      const base = baseline.current;
+      const changed = [...cur.entries].filter(([d, j]) => base.entries.get(d) !== j).map(([d]) => state.entries[d]);
+      const removed = [...base.entries.keys()].filter((d) => !cur.entries.has(d));
+      const mirrors = [...cur.mirrors].filter(([d, j]) => base.mirrors.get(d) !== j).map(([d]) => state.mirrors[d]);
+      const profileChanged = cur.profile !== base.profile;
+      if (!changed.length && !removed.length && !mirrors.length && !profileChanged) return;
+      setSync("syncing");
+      try {
+        await Promise.all([
+          pushEntries(user.id, changed),
+          removeEntries(user.id, removed),
+          pushMirrors(user.id, mirrors),
+          profileChanged ? pushProfile(user.id, state.name, state.reminders) : Promise.resolve(),
+        ]);
+        baseline.current = cur;
+        setSync("saved");
+      } catch {
+        setSync("error");
+      }
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [state, user]);
+
+  const signOut = useCallback(async () => {
+    await supabase()?.auth.signOut();
+    baseline.current = { entries: new Map(), mirrors: new Map(), profile: "" };
+    setState(emptyState());
+    setTab("today");
+    setViewDate(null);
+    setToast("Signed out. Your journal is safe in your account.");
+  }, []);
+
   const patch = useCallback((fn: (s: AppState) => AppState) => setState((p) => (p ? fn(p) : p)), []);
 
   const setEntry = useCallback(
     (date: string, fn: (e: DayEntry) => DayEntry) =>
       patch((s) => {
         const cur = s.entries[date];
-        return cur ? { ...s, entries: { ...s.entries, [date]: fn(cur) } } : s;
+        return cur ? { ...s, entries: { ...s.entries, [date]: { ...fn(cur), updatedAt: new Date().toISOString() } } } : s;
       }),
     [patch],
   );
 
   const createEntry = useCallback(
     (date: string, promises: PromiseItem[]) =>
-      patch((s) => ({ ...s, entries: { ...s.entries, [date]: { date, promises, journal: "" } } })),
+      patch((s) => ({
+        ...s,
+        entries: { ...s.entries, [date]: { date, promises, journal: "", updatedAt: new Date().toISOString() } },
+      })),
     [patch],
   );
 
@@ -112,6 +209,7 @@ export default function AppShell() {
   if (!state.onboarded) {
     return (
       <Onboarding
+        signingIn={!!user && sync === "syncing"}
         onStart={(name) => patch((s) => ({ ...s, name, onboarded: true }))}
         onDemo={(name) => {
           patch((s) => ({ ...s, name, onboarded: true }));
@@ -236,7 +334,14 @@ export default function AppShell() {
                 setToast("That file isn't a Journey Along export.");
               }
             }}
+            email={user?.email ?? null}
+            sync={sync}
+            onSignOut={signOut}
             onReset={() => {
+              if (user) {
+                deleteAllRemote(user.id).catch(() => {});
+                baseline.current = { entries: new Map(), mirrors: new Map(), profile: baseline.current.profile };
+              }
               setState({ ...emptyState() });
               setViewDate(null);
               setTab("today");

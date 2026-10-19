@@ -30,6 +30,7 @@ export interface DayEntry {
   reply?: string;
   replySource?: "ai" | "local";
   demo?: boolean;
+  updatedAt?: string; // ISO time of the last change, used to sync between devices
 }
 
 export interface Mirror {
