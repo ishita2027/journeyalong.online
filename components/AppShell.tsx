@@ -226,7 +226,8 @@ export default function AppShell() {
   const y = state.entries[yesterday];
   const yesterdayOpen = !!y && y.promises.length > 0 && !y.checkedInAt;
   const activeDate = viewDate ?? today;
-  const plan = PLANS.find((p) => p.id === state.plan) ?? PLANS[0];
+  const planId = state.plan !== "free" && state.planUntil && Date.parse(state.planUntil) < now.getTime() ? "free" : state.plan;
+  const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
 
   const go = (t: TabId) => {
     setTab(t);
@@ -359,7 +360,20 @@ export default function AppShell() {
         ))}
       </nav>
 
-      {upgrade && <UpgradeSheet current={state.plan} onClose={() => setUpgrade(false)} />}
+      {upgrade && (
+        <UpgradeSheet
+          current={planId}
+          until={state.planUntil}
+          name={state.name}
+          getToken={async () => (await supabase()?.auth.getSession())?.data.session?.access_token ?? null}
+          onClose={() => setUpgrade(false)}
+          onPaid={({ plan: p, until }) => patch((s) => ({ ...s, plan: p, planUntil: until }))}
+          onSignIn={() => {
+            setUpgrade(false);
+            go("profile");
+          }}
+        />
+      )}
 
       {toast && (
         <div className="toast" role="status">

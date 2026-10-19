@@ -36,7 +36,11 @@ export default function ProfileView({
   const fileRef = useRef<HTMLInputElement>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const hasDemo = Object.values(state.entries).some((e) => e.demo);
-  const plan = PLANS.find((p) => p.id === state.plan) ?? PLANS[0];
+  const expired = !!state.planUntil && Date.parse(state.planUntil) < Date.now();
+  const plan = PLANS.find((p) => p.id === (expired ? "free" : state.plan)) ?? PLANS[0];
+  const untilText = state.planUntil
+    ? new Date(state.planUntil).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+    : "";
   const r = state.reminders;
   const initial = (state.name.trim()[0] || "J").toUpperCase();
 
@@ -70,7 +74,7 @@ export default function ProfileView({
         <div className="row-split">
           <div>
             <p className="title-2">{plan.name}</p>
-            <p className="soft body-sm">{plan.id === "free" ? "Free forever. Upgrade any time." : `${plan.price} ${plan.per}`}</p>
+            <p className="soft body-sm">{plan.id === "free" ? (expired ? `Your paid plan ended on ${untilText}.` : "Free forever. Upgrade any time.") : untilText ? `Runs until ${untilText}` : `${plan.price} ${plan.per}`}</p>
           </div>
           <button className="btn btn-primary" onClick={onUpgrade}>
             See plans

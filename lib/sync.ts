@@ -6,6 +6,7 @@ export interface Remote {
   name: string | null;
   reminders: Reminders | null;
   plan: AppState["plan"];
+  planUntil?: string;
   entries: Record<string, DayEntry>;
   mirrors: Record<string, Mirror>;
 }
@@ -17,7 +18,7 @@ export async function pullAll(userId: string): Promise<Remote> {
     sb.from("profiles").select("name, reminders").eq("id", userId).maybeSingle(),
     sb.from("entries").select("date, data, updated_at").eq("user_id", userId),
     sb.from("mirrors").select("end_date, data").eq("user_id", userId),
-    sb.from("subscriptions").select("plan").eq("user_id", userId).maybeSingle(),
+    sb.from("subscriptions").select("plan, current_period_end").eq("user_id", userId).maybeSingle(),
   ]);
   for (const r of [prof, ents, mirs, sub]) if (r.error) throw r.error;
   const entries: Record<string, DayEntry> = {};
@@ -27,11 +28,14 @@ export async function pullAll(userId: string): Promise<Remote> {
   }
   const mirrors: Record<string, Mirror> = {};
   for (const row of mirs.data ?? []) mirrors[row.end_date] = row.data as Mirror;
-  const plan = (sub.data?.plan as AppState["plan"]) || "free";
+  const until = (sub.data?.current_period_end as string | null) || undefined;
+  const active = !!until && Date.parse(until) > Date.now();
+  const plan = active ? ((sub.data?.plan as AppState["plan"]) || "free") : "free";
   return {
     name: prof.data?.name ?? null,
     reminders: (prof.data?.reminders as Reminders) ?? null,
     plan: plan === "plus" || plan === "deep" ? plan : "free",
+    planUntil: active ? until : undefined,
     entries,
     mirrors,
   };
@@ -51,6 +55,7 @@ export function merge(local: AppState, remote: Remote): AppState {
     name: local.name || remote.name || "",
     reminders: remote.reminders ?? local.reminders,
     plan: remote.plan,
+    planUntil: remote.planUntil,
     entries,
     mirrors: { ...remote.mirrors, ...local.mirrors },
   };

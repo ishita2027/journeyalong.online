@@ -57,6 +57,8 @@ export interface AppState {
   name: string;
   onboarded: boolean;
   plan: "free" | "plus" | "deep";
+  /** When a paid plan ends (ISO). Set from the account after a Razorpay payment. */
+  planUntil?: string;
   reminders: Reminders;
   entries: Record<string, DayEntry>;
   mirrors: Record<string, Mirror>;

@@ -74,12 +74,11 @@ days, for a Mirror) is sent to the Anthropic API.
 
 ## Not built yet
 
-- **Payments.** The upgrade screen is designed but says payments aren't switched on. Wire Razorpay
-  Subscriptions (INR) or Stripe and gate `/api/ai` by plan.
+- **Renewals.** Plus and Deep are one-time Razorpay payments that each cover 30 days (`/api/pay/order`,
+  `/api/pay/verify`). Needs `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `SUPABASE_SECRET_KEY` in Vercel.
+  Automatic monthly renewal (Razorpay Subscriptions) and a `payment.captured` webhook are not built yet.
 - **Reminders.** The times are saved in Profile, but no notifications are sent yet. Web push works on Android,
   and on iPhone only after the app is added to the home screen.
-- **Accounts and sync.** Data lives in one browser. Add auth and a database (for example Supabase) before
-  charging money.
 - **Per-user AI limits.** `/api/ai` has payload caps and a best-effort per-IP limiter only.
 - The crisis-language handling in the partner prompt (it points to Tele-MANAS, 14416) should be reviewed
   before launch.
