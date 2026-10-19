@@ -79,6 +79,7 @@ days, for a Mirror) is sent to the Anthropic API.
 - **Reminders.** The times are saved in Profile, but no notifications are sent yet. Web push works on Android,
   and on iPhone only after the app is added to the home screen.
 - **Accounts and sync.** Data lives in one browser. Add auth and a database (for example Supabase) before
+- 
   charging money.
 - **Per-user AI limits.** `/api/ai` has payload caps and a best-effort per-IP limiter only.
 - The crisis-language handling in the partner prompt (it points to Tele-MANAS, 14416) should be reviewed
