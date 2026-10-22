@@ -123,24 +123,24 @@ export default function ProfileView({
         </div>
       </section>
 
-      <section className="card card-lg" aria-label="AI coach">
-        <p className="headline">
-          <span className={`status-dot ${aiOn ? "on" : ""}`} aria-hidden="true" />
-          AI coach {aiOn ? "connected" : "not connected"}
-        </p>
-        <p className="soft body-sm" style={{ marginTop: 4 }}>
-          {aiOn
-            ? "When you finish a check-in or read a Mirror, that entry's text is sent to Anthropic's API to write the reply."
-            : "The app runs on built-in logic. Add ANTHROPIC_API_KEY on the server to turn on AI replies and the full Mind Mirror."}
-        </p>
-      </section>
+      {aiOn && (
+        <section className="card card-lg" aria-label="AI coach">
+          <p className="headline">
+            <span className="status-dot on" aria-hidden="true" />
+            AI coach connected
+          </p>
+          <p className="soft body-sm" style={{ marginTop: 4 }}>
+            When you finish a check-in or read a Mirror, that entry&rsquo;s text is sent to an AI service to write the reply.
+          </p>
+        </section>
+      )}
 
       <section className="card card-lg" aria-label="Your data">
         <div className="rows">
           <div>
             <p className="headline">Your data</p>
             <p className="soft body-sm">
-              Everything is saved in this browser only. Export a copy if you switch devices or clear your browser.
+              {email ? "Your journal is saved to your account and on this device. You can also download a copy." : "Everything is saved in this browser only. Sign in above to keep it safe, or export a copy."}
             </p>
             <div className="actions" style={{ marginTop: 12 }}>
               <button className="btn btn-soft" onClick={onExport}>

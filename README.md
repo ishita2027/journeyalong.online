@@ -33,7 +33,9 @@ Without a key everything still works with built-in logic (replies are simpler an
 
 | Variable | Required | Default |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | For AI features | none |
+| `GROQ_API_KEY` | Free AI option (used when no Anthropic key) | none |
+| `GROQ_MODEL` / `GROQ_FAST_MODEL` | No | `llama-3.3-70b-versatile` / `llama-3.1-8b-instant` |
+| `ANTHROPIC_API_KEY` | For AI features (paid) | none |
 | `ANTHROPIC_MODEL` | No | `claude-sonnet-5` (replies and Mind Mirror) |
 | `ANTHROPIC_FAST_MODEL` | No | `claude-haiku-4-5-20251001` (promise sharpening) |
 
